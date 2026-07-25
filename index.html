@@ -1,297 +1,347 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>منظومة العيادة الذكية - السجل الطبي الإلكتروني الموحد (EHR)</title>
+    <title>ZinMed | النظام الذكي للسجلات الطبية المشفرة</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { medical: { 50: '#f0fdf4', 500: '#10b981', 600: '#059669', 900: '#064e3b' } } } }
+        }
+    </script>
     
-    <!-- FontAwesome Icons -->
+    <!-- FontAwesome & Libraries -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- QRCode.js Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Firebase SDK (App, Auth, Firestore) -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
-    <!-- Custom CSS File -->
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col selection:bg-cyan-500 selection:text-white transition-colors duration-500">
 
-    <!-- Header / شريط العنوان الرئيسي -->
-    <header class="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-40">
+    <!-- Header الأيقوني الفاخر -->
+    <header class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800/80 p-4 sticky top-0 z-40 shadow-xl">
         <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
-            <div class="flex items-center gap-3">
-                <div class="bg-cyan-500/10 p-2.5 rounded-xl border border-cyan-500/30 text-cyan-400">
-                    <i class="fa-solid fa-hospital-user text-2xl"></i>
+            <div class="flex items-center gap-4">
+                <div class="relative group cursor-pointer">
+                    <div class="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-2xl blur opacity-30 group-hover:opacity-75 transition duration-500"></div>
+                    <div class="relative bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 p-3 rounded-2xl text-cyan-600 dark:text-cyan-400 flex items-center justify-center">
+                        <i class="fa-solid fa-heart-pulse text-2xl animate-pulse"></i>
+                    </div>
                 </div>
                 <div>
-                    <h1 class="text-lg font-bold text-white flex items-center gap-2">
-                        منظومة إدارة السجلات الطبية الموحدة
-                        <span class="text-[10px] bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full border border-cyan-500/30">NEXUS EHR v2.0</span>
+                    <h1 class="text-xl font-black tracking-wider flex items-center gap-3 bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 dark:from-cyan-400 dark:via-teal-300 dark:to-emerald-400 bg-clip-text text-transparent">
+                        ZinMed Clinical OS
+                        <span id="roleBadge" class="hidden text-[10px] bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 px-3 py-1 rounded-full border border-cyan-500/20 font-normal"></span>
                     </h1>
-                    <p class="text-xs text-slate-400">نظام إدارة العيادات، الترميز الطبي الدولي (ICD-10)، والوصفات الرقمية</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">الجيل القادم لإدارة السجلات الصحية الموثقة بالبلوكشين</p>
                 </div>
+                <button id="btnGoBack" onclick="goBackStep()" class="hidden mr-4 w-9 h-9 flex items-center justify-center rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all border border-slate-300 dark:border-slate-700 shadow-inner" title="رجوع للخلف">
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
             </div>
             
             <div class="flex items-center gap-3">
-                <!-- User Info Badge -->
-                <div id="userInfoBox" class="hidden items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-xl text-xs">
-                    <i class="fa-solid fa-user-doctor text-cyan-400"></i>
-                    <span id="userEmailDisplay" class="text-slate-200 font-semibold">--</span>
-                    <button onclick="handleLogout()" title="تسجيل الخروج" class="mr-2 text-rose-400 hover:text-rose-300 transition-all">
-                        <i class="fa-solid fa-right-from-bracket"></i>
+                <button onclick="toggleTheme()" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-200 dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all border border-slate-300 dark:border-slate-700 shadow-inner" title="تبديل الوضع الداكن/الفاتح">
+                    <i id="themeIcon" class="fa-solid fa-sun"></i>
+                </button>
+
+                <div id="userInfoBox" class="hidden items-center gap-3 bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700/80 px-4 py-2 rounded-2xl text-xs backdrop-blur-md">
+                    <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></div>
+                    <span id="userEmailDisplay" class="font-bold text-slate-800 dark:text-slate-200">--</span>
+                    <button onclick="handleLogout()" title="تسجيل الخروج" class="mr-2 text-rose-500 hover:text-rose-600 dark:hover:text-rose-300 transition-all bg-rose-500/10 p-2 rounded-xl border border-rose-500/20">
+                        <i class="fa-solid fa-power-off"></i>
                     </button>
                 </div>
-
-                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    السحابة الطبية المشفرة
-                </span>
             </div>
         </div>
     </header>
 
-    <!-- Main Container / المحتوى الرئيسي -->
-    <main class="max-w-7xl mx-auto w-full p-4 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
+    <!-- Main Workspace -->
+    <main class="max-w-7xl mx-auto w-full p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
         
-        <!-- القسم الأيمن: تسجيل المريض وقائمة المرضى -->
-        <section class="lg:col-span-4 flex flex-col gap-4">
-            <!-- نموذج إضافة مريض -->
-            <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl">
-                <h2 class="text-sm font-bold text-cyan-400 mb-3 flex items-center gap-2">
-                    <i class="fa-solid fa-user-plus"></i> تسجيل مريض جديد
-                </h2>
-                <form id="addPatientForm" onsubmit="savePatient(event)" class="space-y-3">
-                    <div>
-                        <label class="text-xs text-slate-400 block mb-1">اسم المريض بالكامل</label>
-                        <input type="text" id="patientName" required placeholder="مثال: أحمد محمد علي" 
-                               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
-                    </div>
-                    
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="text-xs text-slate-400 block mb-1">العمر</label>
-                            <input type="number" id="patientAge" required placeholder="35" 
-                                   class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
-                        </div>
-                        <div>
-                            <label class="text-xs text-slate-400 block mb-1">الجنس</label>
-                            <select id="patientGender" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
-                                <option value="ذكر">ذكر</option>
-                                <option value="أنثى">أنثى</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="text-xs text-slate-400 block mb-1">رقم الهاتف</label>
-                        <input type="tel" id="patientPhone" placeholder="09X XXXXXXX" 
-                               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
-                    </div>
-
-                    <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 text-xs rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-cloud"></i> حفظ المريض في السجل الطبي الموحد
-                    </button>
-                </form>
-            </div>
-
-            <!-- قائمة المرضى -->
-            <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl flex-1 flex flex-col">
-                <div class="flex justify-between items-center mb-3">
-                    <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2">
-                        <i class="fa-solid fa-users text-cyan-400"></i> قائمة الانتظار والعيادة
+        <!-- لوحة تحكم المؤسسة الصحية -->
+        <section id="hospitalDashboard" class="hidden lg:col-span-12 flex-col gap-6">
+            <div class="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl shadow-2xl backdrop-blur-xl relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-lg font-bold text-cyan-600 dark:text-cyan-400 flex items-center gap-3">
+                        <i class="fa-solid fa-hospital text-xl"></i> مركز القيادة والتحكم للمؤسسة الصحية
                     </h2>
-                    <span id="patientCount" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full">0 مريض</span>
+                    <div id="hospitalTypeBadge" class="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-3 py-1.5 rounded-xl border border-emerald-500/20 font-bold">نوع المؤسسة: --</div>
                 </div>
-                
-                <div id="patientsList" class="space-y-2 overflow-y-auto max-h-[350px] pr-1">
-                    <div class="text-center py-8 text-slate-500 text-xs">
-                        <i class="fa-solid fa-spinner animate-spin text-lg mb-2"></i>
-                        <p>جاري تحديث بيانات السجلات الصحية...</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+                    <div class="bg-slate-100 dark:bg-slate-950/60 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 text-center">
+                        <div class="w-12 h-12 mx-auto rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl mb-3 border border-emerald-500/20"><i class="fa-solid fa-users"></i></div>
+                        <h3 class="text-xs text-slate-500 dark:text-slate-400 font-medium">إجمالي المرضى المسجلين</h3>
+                        <p id="statTotalPatients" class="text-3xl font-black text-slate-900 dark:text-white mt-1">0</p>
                     </div>
+                    <div class="bg-slate-100 dark:bg-slate-950/60 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 text-center">
+                        <div class="w-12 h-12 mx-auto rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xl mb-3 border border-blue-500/20"><i class="fa-solid fa-file-prescription"></i></div>
+                        <h3 class="text-xs text-slate-500 dark:text-slate-400 font-medium">الوصفات والتقارير الموثقة</h3>
+                        <p id="statTotalRx" class="text-3xl font-black text-slate-900 dark:text-white mt-1">0</p>
+                    </div>
+                    <div class="bg-slate-100 dark:bg-slate-950/60 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 text-center">
+                        <div class="w-12 h-12 mx-auto rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xl mb-3 border border-purple-500/20"><i class="fa-solid fa-shield-halved"></i></div>
+                        <h3 class="text-xs text-slate-500 dark:text-slate-400 font-medium">حالة تشفير الكتل (Blockchain)</h3>
+                        <p class="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-2 flex items-center justify-center gap-2"><i class="fa-solid fa-circle-check text-sm"></i> مؤمن بالكامل</p>
+                    </div>
+                </div>
+                <div class="h-72 w-full bg-slate-100 dark:bg-slate-950/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-800/50">
+                    <canvas id="analyticsChart"></canvas>
                 </div>
             </div>
         </section>
 
-        <!-- القسم الأيسر: ملف المريض والأدوات الطبية -->
-        <section class="lg:col-span-8 flex flex-col gap-4">
-            <!-- بطاقة المريض المختار -->
-            <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl flex flex-wrap justify-between items-center gap-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 text-xl font-bold">
-                        <i class="fa-solid fa-user-doctor"></i>
+        <!-- القائمة الجانبية لإدارة المرضى والفرز الطارئ -->
+        <section id="clinicalSidebar" class="hidden lg:col-span-4 flex-col gap-5">
+            <div id="patientFormContainer" class="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl shadow-2xl backdrop-blur-xl">
+                <h2 class="text-sm font-bold text-cyan-600 dark:text-cyan-400 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-hospital-user"></i> تسجيل مريض مع نظام الفرز الطارئ
+                </h2>
+                <form id="addPatientForm" onsubmit="savePatient(event)" class="space-y-3.5">
+                    <input type="text" id="patientName" required placeholder="اسم المريض الرباعي" class="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-cyan-500 text-slate-900 dark:text-white transition-all">
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="number" id="patientAge" required placeholder="العمر" class="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-cyan-500 text-slate-900 dark:text-white transition-all">
+                        <select id="patientGender" class="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-cyan-500 text-slate-900 dark:text-white transition-all">
+                            <option value="ذكر">ذكر</option>
+                            <option value="أنثى">أنثى</option>
+                        </select>
                     </div>
-                    <div>
-                        <h3 id="activePatientName" class="text-base font-bold text-white">اختر مريضاً من القائمة</h3>
-                        <p id="activePatientMeta" class="text-xs text-slate-400">العمر: -- | الجنس: -- | الهاتف: --</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="tel" id="patientPhone" placeholder="رقم الهاتف" class="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-cyan-500 text-slate-900 dark:text-white transition-all">
+                        <select id="patientTriage" class="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-cyan-500 text-slate-900 dark:text-white transition-all font-bold">
+                            <option value="أخضر" class="text-emerald-500">أخضر - مستقر</option>
+                            <option value="أصفر" class="text-amber-500">أصفر - متوسط</option>
+                            <option value="أحمر" class="text-rose-500">أحمر - حرج عاجل</option>
+                        </select>
                     </div>
-                </div>
-
-                <button onclick="speakPatientName()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-cyan-300 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all">
-                    <i class="fa-solid fa-volume-high text-cyan-400"></i> نداء صوتي للمريض
-                </button>
+                    <button type="submit" class="w-full bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white font-bold py-3 text-xs rounded-2xl transition-all shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-folder-plus"></i> إنشاء الملف الطبي بالمنظومة
+                    </button>
+                </form>
             </div>
 
-            <!-- التبويبات -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden flex-1 flex flex-col">
-                <div class="flex border-b border-slate-800 bg-slate-950/50 p-1 gap-1">
-                    <button onclick="switchTab(1)" id="tab1Btn" class="flex-1 py-2 text-xs font-bold rounded-xl transition-all bg-cyan-600 text-white">
-                        <i class="fa-solid fa-stethoscope ml-1"></i> ICD-10 والوصفة الذكية
-                    </button>
-                    <button onclick="switchTab(2)" id="tab2Btn" class="flex-1 py-2 text-xs font-bold rounded-xl transition-all text-slate-400 hover:text-white">
-                        <i class="fa-solid fa-file-medical ml-1"></i> التقارير والتحاليل
-                    </button>
-                    <button onclick="switchTab(3)" id="tab3Btn" class="flex-1 py-2 text-xs font-bold rounded-xl transition-all text-slate-400 hover:text-white">
-                        <i class="fa-solid fa-comments ml-1"></i> الملاحظات والدردشة
-                    </button>
+            <div class="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl shadow-2xl flex-1 flex flex-col">
+                <div class="mb-4 relative">
+                    <i class="fa-solid fa-magnifying-glass absolute right-4 top-3.5 text-slate-400 text-xs"></i>
+                    <input type="text" id="patientSearchInput" onkeyup="filterPatients()" placeholder="بحث في السجلات بالاسم أو الهاتف..." 
+                           class="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl pr-10 pl-4 py-3 text-xs focus:outline-none focus:border-cyan-500 text-slate-900 dark:text-white transition-all">
+                </div>
+                <div id="patientsList" class="space-y-2.5 overflow-y-auto max-h-[380px] pr-1"></div>
+            </div>
+        </section>
+
+        <!-- مساحة العمل الإكلينيكية المتقدمة (مع 4 تبويبات شاملة) -->
+        <section id="clinicalWorkspace" class="hidden lg:col-span-8 flex-col gap-5">
+            <div class="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl shadow-2xl flex flex-wrap justify-between items-center gap-4 backdrop-blur-xl">
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-teal-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-600 dark:text-cyan-400 text-2xl font-bold shadow-inner">
+                        <i class="fa-solid fa-user-injured"></i>
+                    </div>
+                    <div>
+                        <h3 id="activePatientName" class="text-lg font-black text-slate-900 dark:text-white">اختر مريضاً من القائمة الجانبية أو استعرض سجلك</h3>
+                        <p id="activePatientMeta" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">--</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex-1 flex flex-col backdrop-blur-xl">
+                <!-- Tabs Navigation -->
+                <div class="flex border-b border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950/60 p-2 gap-1 overflow-x-auto">
+                    <button onclick="switchTab(1)" id="tab1Btn" class="flex-1 py-3 px-3 text-xs font-bold rounded-2xl transition-all bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-lg shadow-cyan-500/20 whitespace-nowrap">التشخيص والوصفات (QR)</button>
+                    <button onclick="switchTab(2)" id="tab2Btn" class="flex-1 py-3 px-3 text-xs font-bold rounded-2xl transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white whitespace-nowrap">التقارير والمرفقات</button>
+                    <button onclick="switchTab(3)" id="tab3Btn" class="flex-1 py-3 px-3 text-xs font-bold rounded-2xl transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white whitespace-nowrap">المحادثة والردود السريعة</button>
+                    <button onclick="switchTab(4)" id="tab4Btn" class="flex-1 py-3 px-3 text-xs font-bold rounded-2xl transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white whitespace-nowrap">سجل التدقيق الأمني</button>
                 </div>
 
-                <div class="p-4 flex-1">
-                    <!-- TAB 1: ICD-10 & Smart Rx -->
-                    <div id="tab1Content" class="space-y-4">
-                        <div>
-                            <label class="text-xs font-bold text-cyan-400 block mb-1.5">
-                                <i class="fa-solid fa-magnifying-glass font-normal"></i> البحث في الترميز الطبي الدولي (ICD-10):
-                            </label>
-                            <input type="text" id="icdSearchInput" list="icdList" onchange="onIcdSelectChange()" placeholder="اكتب اسم المرض أو الكود (مثال: سكري, I10, ربو...)" 
-                                   class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500">
-                            
+                <div class="p-6 flex-1">
+                    <!-- Tab 1: Diagnostics & Blockchain Rx with QR -->
+                    <div id="tab1Content" class="space-y-5">
+                        <div id="doctorRxControlSection">
+                            <label class="text-xs font-bold text-cyan-600 dark:text-cyan-400 block mb-2">تصنيف الأمراض الدولي (ICD-10 Diagnostics):</label>
+                            <input type="text" id="icdSearchInput" list="icdList" onchange="onIcdSelectChange()" placeholder="ابحث أو أدخل الكود التشخيصي..." 
+                                   class="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-cyan-500 text-slate-900 dark:text-white transition-all">
                             <datalist id="icdList">
-                                <option value="E11.9 - داء السكري من النوع الثاني (Type 2 Diabetes)">
-                                <option value="E10.9 - داء السكري من النوع الأول (Type 1 Diabetes)">
-                                <option value="E03.9 - قصور نشاط الغدة الدرقية (Hypothyroidism)">
-                                <option value="E66.9 - السمنة المفرطة (Obesity)">
-                                <option value="I10 - ارتفاع ضغط الدم الأولي (Hypertension)">
-                                <option value="I20.9 - الذبحة الصدرية (Angina Pectoris)">
-                                <option value="I21.9 - احتشاء عضلة القلب الحاد (Acute Myocardial Infarction)">
-                                <option value="I50.9 - قصور القلب الاحتقاني (Heart Failure)">
-                                <option value="J45.9 - الربو الشعبى (Asthma)">
-                                <option value="J18.9 - التهاب الرئة (Pneumonia)">
-                                <option value="J02.9 - التهاب الحلق والبلعوم الحاد (Acute Pharyngitis)">
-                                <option value="J44.9 - الانسداد الرئوي المزمن (COPD)">
-                                <option value="J01.9 - التهاب الجيوب الأنفية (Acute Sinusitis)">
-                                <option value="K21.9 - ارتجاع المريء (GERD)">
-                                <option value="K29.7 - التهاب المعدة (Gastritis)">
-                                <option value="A09 - التهاب المعدة والأمعاء المعدي (Gastroenteritis)">
-                                <option value="K58.9 - متلازمة القولون العصبي (IBS)">
-                                <option value="N39.0 - التهاب المسالك البولية (UTI)">
-                                <option value="N20.1 - حصوات الكلى والمثانة (Renal Calculus)">
-                                <option value="G43.9 - الشقيقة / الصداع النصفي (Migraine)">
-                                <option value="F41.1 - اضطراب القلق العام (Generalized Anxiety)">
-                                <option value="G40.9 - الصرع (Epilepsy)">
-                                <option value="M54.5 - آلام أسفل الظهر (Low Back Pain)">
-                                <option value="M17.9 - خشونة وصدمات الركبة (Knee Osteoarthritis)">
-                                <option value="R50.9 - حمى غير محددة (Fever)">
-                                <option value="R07.9 - ألم في الصدر (Chest Pain)">
-                                <option value="R10.9 - ألم حاد في البطن (Abdominal Pain)">
-                                <option value="B34.9 - عدوى فيروسية عامة (Viral Infection)">
+                                <option value="E11.9 - داء السكري من النوع الثاني">
+                                <option value="I10 - ارتفاع ضغط الدم الأولي">
+                                <option value="J45.9 - الربو الشعبى غير المنصنف">
+                                <option value="K21.9 - ارتجاع المريء">
                             </datalist>
                         </div>
 
-                        <div id="smartRxBox" class="bg-cyan-500/10 border border-cyan-500/30 p-3 rounded-xl">
-                            <span class="text-xs font-bold text-cyan-300 flex items-center gap-1 mb-1">
-                                <i class="fa-solid fa-wand-magic-sparkles"></i> البروتوكول العلاجي الذكي (CDSS):
-                            </span>
-                            <p id="suggestedDrugText" class="text-xs text-slate-200 mb-3">اختر تشخيصاً من القائمة أعلاه لتوليد البروتوكول العلاجي الموصى به.</p>
-                            <button onclick="savePrescriptionToDatabase()" class="w-full py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-xs font-semibold rounded-lg border border-cyan-500/40 transition-all flex items-center justify-center gap-2">
-                                <i class="fa-solid fa-floppy-disk"></i> حفظ الوصفة في السجل الطبي الإلكتروني
-                            </button>
+                        <div class="bg-cyan-500/5 border border-cyan-500/20 p-5 rounded-2xl">
+                            <p id="suggestedDrugText" class="text-xs mb-4 font-semibold text-cyan-700 dark:text-cyan-300">اختر تشخيصاً لتوليد البروتوكول العلاجي الموصى به.</p>
+                            <div id="blockchainIssueBtnWrapper">
+                                <button onclick="savePrescriptionToDatabase()" class="w-full py-3 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 text-xs font-bold rounded-xl border border-cyan-500/30 transition-all flex items-center justify-center gap-2 shadow-inner">
+                                    <i class="fa-solid fa-link"></i> إصدار وختم الوصفة عبر تقنية البلوكشين وتوليد QR Code
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="blockchainHashDisplay" class="hidden p-5 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-xs text-emerald-700 dark:text-emerald-300 space-y-4 text-center">
+                            <div class="font-mono break-all space-y-1">
+                                <div class="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase tracking-widest font-bold"><i class="fa-solid fa-shield-check"></i> بصمة الكتلة المشفرة (SHA-256):</div>
+                                <span id="hashValue" class="text-slate-900 dark:text-white select-all"></span>
+                            </div>
+                            <div class="flex flex-col items-center justify-center gap-3 pt-2 border-t border-emerald-500/20">
+                                <img id="qrCodeImage" src="" alt="Prescription QR Code" class="w-32 h-32 p-2 bg-white rounded-xl shadow-md border border-emerald-500/30">
+                                <button onclick="window.print()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2">
+                                    <i class="fa-solid fa-print"></i> طباعة الوصفة الطبية الرسمية مع QR
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Medical Reports & File Uploads -->
+                    <div id="tab2Content" class="hidden space-y-5 flex-col h-full">
+                        <div id="doctorUploadContainer" class="bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 p-5 rounded-2xl">
+                            <h4 class="text-xs font-bold text-cyan-600 dark:text-cyan-400 mb-3 flex items-center gap-2"><i class="fa-solid fa-cloud-arrow-up"></i> رفع تقرير أو روشتة أو تحليل للمريض</h4>
+                            <div class="space-y-3">
+                                <input type="text" id="reportTitle" placeholder="عنوان المستند (مثال: تحليل دم شامل / تقرير أشعة)" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500">
+                                <textarea id="reportNotes" placeholder="رأي وتعليق الطبيب الاستشاري..." class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500 h-20 resize-none"></textarea>
+                                <div class="flex items-center gap-3">
+                                    <input type="file" id="patientFilePayload" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-cyan-600 file:text-white hover:file:bg-cyan-500 cursor-pointer">
+                                    <button onclick="uploadPatientAttachment()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 px-5 rounded-xl text-xs transition-all shadow-lg flex items-center gap-2 whitespace-nowrap">
+                                        <i class="fa-solid fa-upload"></i> رفع وإرسال
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="pt-2">
-                            <button onclick="generateQRPrescription()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold py-2.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
-                                <i class="fa-solid fa-qrcode text-base"></i> طباعة الوصفة برمز QR للتقارير
+                        <div class="flex-1">
+                            <h4 class="text-xs font-bold text-slate-800 dark:text-slate-300 mb-3">التقارير والتحاليل المعتمدة:</h4>
+                            <div id="patientAttachmentsList" class="space-y-2 max-h-[220px] overflow-y-auto pr-1"></div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 3: Encrypted Chat with Bubbles & Quick Snippets -->
+                    <div id="tab3Content" class="hidden space-y-3 flex-col h-full">
+                        <!-- قوالب الردود السريعة للأطباء -->
+                        <div id="quickSnippetsBar" class="flex flex-wrap gap-1.5 pb-2 border-b border-slate-200 dark:border-slate-800">
+                            <span class="text-[10px] text-slate-400 flex items-center ml-1">ردود سريعة:</span>
+                            <button onclick="insertSnippet('التوابع مطمئنة جداً، يرجى الاستمرار على العلاج الموصوف.')" class="text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-cyan-500/20 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700 transition-all">النتائج مطمئنة</button>
+                            <button onclick="insertSnippet('الرجاء إعادة فحص التحاليل المخبرية بعد أسبوع بدقة.')" class="text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-cyan-500/20 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700 transition-all">إعادة الفحص</button>
+                            <button onclick="insertSnippet('تم تعديل الجرعة العلاجية، يرجى مراجعة الروشتة الجديدة المرفقة.')" class="text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-cyan-500/20 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700 transition-all">تعديل الجرعة</button>
+                        </div>
+
+                        <div class="text-[11px] text-slate-600 dark:text-slate-400 text-center bg-slate-100 dark:bg-slate-950 p-2 rounded-xl border border-slate-300 dark:border-slate-800 flex items-center justify-between px-4">
+                            <span class="flex items-center gap-2"><i class="fa-solid fa-lock text-emerald-600 dark:text-emerald-400"></i> محادثة طبية مشفرة وآمنة</span>
+                            <span id="typingIndicator" class="text-cyan-600 dark:text-cyan-400 font-bold italic hidden animate-pulse">جاري الكتابة...</span>
+                        </div>
+                        <div id="chatBox" class="flex-1 min-h-[220px] max-h-[250px] bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl p-4 overflow-y-auto flex flex-col space-y-3"></div>
+                        <div class="flex gap-2 pt-2">
+                            <input type="text" id="chatMessage" oninput="handleTypingEvent()" placeholder="اكتب استشارتك أو ردك..." class="flex-1 bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-cyan-500 text-slate-900 dark:text-white">
+                            <button onclick="sendEncryptedMessage()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 rounded-2xl text-xs transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/20">
+                                <i class="fa-solid fa-paper-plane"></i> إرسال
                             </button>
                         </div>
                     </div>
 
-                    <!-- TAB 2 -->
-                    <div id="tab2Content" class="hidden space-y-3">
-                        <div class="border-2 border-dashed border-slate-800 rounded-2xl p-6 text-center bg-slate-950/40">
-                            <i class="fa-solid fa-cloud-arrow-up text-3xl text-cyan-500 mb-2"></i>
-                            <p class="text-xs text-slate-300 font-bold mb-1">رفع الفحوصات والتحاليل الطبية المشفرة</p>
-                            <p class="text-[11px] text-slate-500 mb-3">يتم الأرشفة التلقائية في الخادم السحابي الآمن الخاص بالمؤسسة</p>
-                            <input type="file" class="hidden" id="fileUpload">
-                            <button onclick="document.getElementById('fileUpload').click()" class="bg-slate-800 text-slate-200 px-3 py-1.5 rounded-xl text-xs hover:bg-slate-700">اختيار ملف</button>
+                    <!-- Tab 4: Audit Logs (سجل التدقيق الأمني والوصول) -->
+                    <div id="tab4Content" class="hidden space-y-4 flex-col h-full">
+                        <div class="bg-amber-500/10 border border-amber-500/20 p-3 rounded-2xl text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-2">
+                            <i class="fa-solid fa-shield-halved text-sm"></i>
+                            <span>سجل التدقيق الأمني يوثق عمليات الوصول والاطلاع على الملف الطبي التزاما بمعايير أمن وسرية البيانات (HIPAA).</span>
                         </div>
-                    </div>
-
-                    <!-- TAB 3 -->
-                    <div id="tab3Content" class="hidden space-y-3">
-                        <label class="text-xs text-slate-400 block">ملاحظات الطبيب المباشرة للمريض:</label>
-                        <textarea id="doctorNotes" rows="4" placeholder="اكتب الملاحظات الطبية أو التوصيات الخاصة هنا..." 
-                                  class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500"></textarea>
+                        <div id="auditLogsList" class="flex-1 overflow-y-auto max-h-[280px] space-y-2.5 pr-1"></div>
                     </div>
                 </div>
             </div>
         </section>
     </main>
 
-    <!-- Modal: تسجيل الدخول -->
-    <div id="authModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl relative">
-            <div class="text-center mb-6">
-                <div class="w-14 h-14 bg-cyan-500/10 border border-cyan-500/30 rounded-2xl flex items-center justify-center mx-auto text-cyan-400 text-2xl mb-3">
+    <!-- Footer Rights -->
+    <footer class="mt-auto py-5 text-center border-t border-slate-200 dark:border-slate-800/80 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl">
+        <p class="text-xs text-slate-600 dark:text-slate-400 font-medium leading-relaxed">
+            &copy; 2026 جميع الحقوق محفوظة لـ 
+            <span class="text-cyan-600 dark:text-cyan-400 font-black">عماد ربيدة</span> 
+            <span class="text-slate-400 mx-2">|</span> 
+            طالب تخرج في تخصص <span class="text-teal-600 dark:text-teal-400 font-bold">نظم المعلومات الصحية (Health Information Systems)</span>
+            <br>
+            <span class="text-slate-500 text-[11px] mt-1 inline-block">مشروع تخرج هندسة السجلات الطبية الموحدة الذكية.</span>
+        </p>
+    </footer>
+
+    <!-- نافذة تسجيل الدخول الفاخرة -->
+    <div id="authModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-2xl z-50 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden">
+            <div class="absolute -right-20 -top-20 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 mx-auto bg-cyan-500/10 border border-cyan-500/30 rounded-2xl flex items-center justify-center text-cyan-600 dark:text-cyan-400 text-3xl mb-3 shadow-inner">
                     <i class="fa-solid fa-user-shield"></i>
                 </div>
-                <h2 class="text-base font-bold text-white">منظومة السجلات الطبية الموحدة</h2>
-                <p class="text-xs text-slate-400 mt-1">تسجيل الدخول الآمن للأطباء والكادر الطبي</p>
+                <h2 class="text-xl font-black text-slate-900 dark:text-white tracking-wide">منظومة ZinMed الطبية</h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">بوابة المصادقة الأمنية الموحدة</p>
             </div>
 
-            <div class="flex bg-slate-950 p-1 rounded-xl mb-4 border border-slate-800">
-                <button id="authTabLogin" onclick="setAuthMode('login')" class="flex-1 py-1.5 text-xs font-bold rounded-lg text-white bg-cyan-600 transition-all">تسجيل الدخول</button>
-                <button id="authTabRegister" onclick="setAuthMode('register')" class="flex-1 py-1.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition-all">حساب جديد</button>
+            <div class="flex bg-slate-100 dark:bg-slate-950 p-1.5 rounded-2xl mb-6 border border-slate-300 dark:border-slate-800 shadow-inner">
+                <button id="authTabLogin" onclick="setAuthMode('login')" class="flex-1 py-2 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-cyan-600 to-teal-600 shadow-lg transition-all">تسجيل الدخول</button>
+                <button id="authTabRegister" onclick="setAuthMode('register')" class="flex-1 py-2 text-xs font-bold rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all">حساب جديد</button>
             </div>
 
-            <form id="authForm" onsubmit="handleAuthSubmit(event)" class="space-y-3">
-                <div>
-                    <label class="text-xs text-slate-400 block mb-1">البريد الإلكتروني المعتمد</label>
-                    <input type="email" id="authEmail" required placeholder="doctor@hospital.ly" 
-                           class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+            <form id="authForm" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+                <div id="roleSelectWrapper">
+                    <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1.5">حدد الصلاحية بالنظام:</label>
+                    <select id="userRole" onchange="toggleHospitalTypeField()" class="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-cyan-500 text-slate-900 dark:text-white transition-all">
+                        <option value="doctor">طبيب / استشاري إكلينيكي</option>
+                        <option value="patient">مريض (سجلي الطبي)</option>
+                        <option value="hospital">مؤسسة صحية / مستشفى</option>
+                    </select>
+                </div>
+
+                <div id="hospitalTypeWrapper" class="hidden">
+                    <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1.5">تصنيف المؤسسة الصحية:</label>
+                    <select id="hospitalTypeSelect" class="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-cyan-500 text-slate-900 dark:text-white transition-all">
+                        <option value="مؤسسة صحية خاصة">مؤسسة صحية خاصة (Private)</option>
+                        <option value="مؤسسة صحية عامة">مؤسسة صحية عامة (Public)</option>
+                    </select>
                 </div>
 
                 <div>
-                    <label class="text-xs text-slate-400 block mb-1">كلمة المرور</label>
-                    <input type="password" id="authPassword" required placeholder="••••••••" 
-                           class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                    <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1.5">البريد الإلكتروني:</label>
+                    <input type="email" id="authEmail" required placeholder="name@zinmed.health" class="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-cyan-500 text-slate-900 dark:text-white transition-all">
                 </div>
 
-                <div id="authAlert" class="hidden text-[11px] p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400"></div>
+                <div>
+                    <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1.5">كلمة المرور:</label>
+                    <input type="password" id="authPassword" required placeholder="••••••••••••" class="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-cyan-500 text-slate-900 dark:text-white transition-all">
+                </div>
+                
+                <div id="authAlert" class="hidden text-[11px] p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-500 text-center font-medium"></div>
 
-                <button type="submit" id="authSubmitBtn" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2.5 text-xs rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 mt-2">
-                    <i class="fa-solid fa-right-to-bracket"></i> دخول المنظومة
-                </button>
+                <button type="submit" id="authSubmitBtn" class="w-full bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white font-bold py-3.5 text-xs rounded-2xl transition-all shadow-xl shadow-cyan-500/20 mt-2">تسجيل الدخول</button>
             </form>
-
-            <p class="text-[10px] text-center text-slate-500 mt-4">مشفر طبياً بمعايير HIPAA و SSL 256-Bit</p>
         </div>
     </div>
 
-    <!-- Modal: QR Code -->
-    <div id="qrModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 max-w-sm w-full text-center space-y-4">
-            <h3 class="text-sm font-bold text-white flex items-center justify-center gap-2">
-                <i class="fa-solid fa-receipt text-cyan-400"></i> الوصفة الطبية الرقمية (QR)
-            </h3>
-            
-            <div id="qrcode" class="bg-white p-3 rounded-xl inline-block shadow-inner"></div>
-            
-            <p id="qrDetailsText" class="text-xs text-slate-300 leading-relaxed bg-slate-950 p-2.5 rounded-xl text-right border border-slate-800"></p>
-
-            <button onclick="closeQrModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-xl transition-all">
-                إغلاق النافذة
+    <!-- نافذة النظام المنبثقة الاحترافية -->
+    <div id="sysAlertModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl transform scale-95 transition-transform duration-300 relative text-center" id="sysAlertBox">
+            <button onclick="closeSysAlert()" class="absolute top-4 left-4 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+                <i class="fa-solid fa-xmark text-lg"></i>
             </button>
+            <div class="flex flex-col items-center gap-4">
+                <div id="sysAlertIcon" class="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl mb-1 shadow-inner"></div>
+                <div>
+                    <h3 id="sysAlertTitle" class="text-base font-bold text-slate-900 dark:text-white mb-1">تنبيه النظام</h3>
+                    <p id="sysAlertMessage" class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed"></p>
+                </div>
+                <button onclick="closeSysAlert()" id="sysAlertBtn" class="w-full py-3 text-white text-xs font-bold rounded-2xl transition-all shadow-lg"></button>
+            </div>
         </div>
     </div>
 
-    <!-- استدعاء البرمجيات الموزعة -->
     <script src="js/firebase-config.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/app.js"></script>
